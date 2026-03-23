@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     geocoding_api_key: str = ""
     # Free token at https://metaculus.com/aib — required for Metaculus ingestion
     metaculus_api_token: str = ""
+    # Register free at https://acleddata.com/user/register — required for ACLED ingestion
+    acled_email: str = ""
+    acled_password: str = ""
 
     # Tier weights (must sum to 1.0)
     tier_weight_economic: float = 0.20

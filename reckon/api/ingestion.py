@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from reckon.db import get_db
 from reckon.ingestion import (
+    AcledIngester,
     EconomicIngester,
     ExistentialIngester,
     IngestionResult,
@@ -23,6 +24,7 @@ _INGESTERS = {
     "existential": ExistentialIngester,
     "polymarket": PolymarketIngester,
     "metaculus": MetaculusIngester,
+    "acled": AcledIngester,
 }
 
 
