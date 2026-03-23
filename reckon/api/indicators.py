@@ -1,12 +1,27 @@
+from dataclasses import asdict
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from reckon.db import get_db
+from reckon.ingestion.economic import EconomicIngester
 from reckon.models.indicator import Baseline, Indicator
 from reckon.schemas.indicator import BaselineIn, BaselineOut, IndicatorOut
 
 router = APIRouter(prefix="/indicators", tags=["indicators"])
+
+
+@router.post("/", summary="Fetch latest FRED economic indicators and store them")
+async def ingest_fred(db: AsyncSession = Depends(get_db)) -> dict:
+    """
+    Pull the four FRED economic series (T10Y2Y, UNRATE, CPIAUCSL, GDPC1),
+    upsert into the indicators table, and return a summary.
+    """
+    ingester = EconomicIngester()
+    result = await ingester.ingest(db)
+    await ingester.close()
+    return asdict(result)
 
 
 @router.get("/", response_model=list[IndicatorOut])

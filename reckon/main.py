@@ -35,7 +35,7 @@ app.add_middleware(
 )
 
 app.include_router(assessments_router)
-app.include_router(indicators_router)
+app.include_router(indicators_router, prefix="/api")
 app.include_router(ingestion_router)
 app.include_router(locations_router)
 

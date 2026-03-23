@@ -1,29 +1,31 @@
 """
 Economic tier ingester.
 
-Pulls from FRED (Federal Reserve Economic Data) for US indicators.
-Add more sources by extending fetch().
+Uses FRED's keyless CSV endpoint — no API key required.
+CSV URL pattern: https://fred.stlouisfed.org/graph/fredgraph.csv?id=SERIES_ID
 
-FRED series used:
-  - UNRATE    : Unemployment rate
-  - CPIAUCSL  : CPI (inflation proxy)
-  - T10Y2Y    : 10Y-2Y Treasury spread (recession indicator)
-  - VIXCLS    : CBOE Volatility Index
+Series collected:
+  - T10Y2Y   : 10Y-2Y Treasury yield spread (recession indicator), percent
+  - UNRATE   : Unemployment rate, %
+  - CPIAUCSL : Consumer Price Index (all urban consumers), index
+  - GDPC1    : Real GDP (quarterly, chained 2017 dollars), billions USD
 """
 
+import csv
+import io
 from datetime import datetime
 
-from reckon.config import settings
 from reckon.ingestion.base import BaseIngester, RawIndicator
 from reckon.models.indicator import Tier
 
-FRED_BASE = "https://api.stlouisfed.org/fred/series/observations"
+FRED_CSV_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 
-FRED_SERIES = {
-    "UNRATE": ("unemployment_rate", "%"),
+# series_id → (indicator_name, unit)
+FRED_SERIES: dict[str, tuple[str, str]] = {
+    "T10Y2Y":   ("yield_curve_spread", "percent"),
+    "UNRATE":   ("unemployment_rate", "%"),
     "CPIAUCSL": ("cpi_inflation", "index"),
-    "T10Y2Y": ("yield_curve_spread", "percent"),
-    "VIXCLS": ("vix_volatility", "index"),
+    "GDPC1":    ("real_gdp", "billions_usd"),
 }
 
 
@@ -31,47 +33,41 @@ class EconomicIngester(BaseIngester):
     tier = Tier.ECONOMIC
 
     async def fetch(self) -> list[RawIndicator]:
-        if not settings.fred_api_key:
-            return self._stub_data()
-
         indicators: list[RawIndicator] = []
         for series_id, (name, unit) in FRED_SERIES.items():
             try:
-                resp = await self._client.get(
-                    FRED_BASE,
-                    params={
-                        "series_id": series_id,
-                        "api_key": settings.fred_api_key,
-                        "file_type": "json",
-                        "sort_order": "desc",
-                        "limit": 1,
-                    },
-                )
-                resp.raise_for_status()
-                obs = resp.json()["observations"]
-                if obs and obs[0]["value"] != ".":
-                    indicators.append(
-                        RawIndicator(
-                            tier=Tier.ECONOMIC,
-                            name=name,
-                            source="FRED",
-                            source_id=f"FRED:{series_id}:{obs[0]['date']}",
-                            raw_value=float(obs[0]["value"]),
-                            unit=unit,
-                            collected_at=datetime.fromisoformat(obs[0]["date"]),
-                        )
-                    )
+                indicator = await self._fetch_series(series_id, name, unit)
+                if indicator:
+                    indicators.append(indicator)
             except Exception:
                 pass  # individual series failures are non-fatal
-
         return indicators
 
-    def _stub_data(self) -> list[RawIndicator]:
-        """Return plausible stub values when no API key is configured."""
-        now = datetime.utcnow()
-        return [
-            RawIndicator(Tier.ECONOMIC, "unemployment_rate", "stub", "stub:UNRATE", 4.1, "%", now),
-            RawIndicator(Tier.ECONOMIC, "cpi_inflation", "stub", "stub:CPIAUCSL", 314.0, "index", now),
-            RawIndicator(Tier.ECONOMIC, "yield_curve_spread", "stub", "stub:T10Y2Y", -0.5, "percent", now),
-            RawIndicator(Tier.ECONOMIC, "vix_volatility", "stub", "stub:VIXCLS", 18.5, "index", now),
-        ]
+    async def _fetch_series(
+        self, series_id: str, name: str, unit: str
+    ) -> RawIndicator | None:
+        resp = await self._client.get(FRED_CSV_URL, params={"id": series_id})
+        resp.raise_for_status()
+
+        # Parse CSV — last non-missing row is the latest observation
+        reader = csv.reader(io.StringIO(resp.text))
+        next(reader)  # skip header: DATE,VALUE
+        latest_date: str | None = None
+        latest_value: float | None = None
+        for date_str, value_str in reader:
+            if value_str and value_str != ".":
+                latest_date = date_str
+                latest_value = float(value_str)
+
+        if latest_date is None or latest_value is None:
+            return None
+
+        return RawIndicator(
+            tier=Tier.ECONOMIC,
+            name=name,
+            source="FRED",
+            source_id=f"FRED:{series_id}:{latest_date}",
+            raw_value=latest_value,
+            unit=unit,
+            collected_at=datetime.fromisoformat(latest_date),
+        )

@@ -3,6 +3,7 @@ from reckon.ingestion.economic import EconomicIngester
 from reckon.ingestion.existential import ExistentialIngester
 from reckon.ingestion.military import MilitaryIngester
 from reckon.ingestion.political import PoliticalIngester
+from reckon.ingestion.polymarket import PolymarketIngester
 
 __all__ = [
     "BaseIngester",
@@ -11,4 +12,5 @@ __all__ = [
     "PoliticalIngester",
     "MilitaryIngester",
     "ExistentialIngester",
+    "PolymarketIngester",
 ]

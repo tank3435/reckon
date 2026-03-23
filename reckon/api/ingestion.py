@@ -10,6 +10,7 @@ from reckon.ingestion import (
     IngestionResult,
     MilitaryIngester,
     PoliticalIngester,
+    PolymarketIngester,
 )
 
 router = APIRouter(prefix="/ingest", tags=["ingestion"])
@@ -19,6 +20,7 @@ _INGESTERS = {
     "political": PoliticalIngester,
     "military": MilitaryIngester,
     "existential": ExistentialIngester,
+    "polymarket": PolymarketIngester,
 }
 
 
