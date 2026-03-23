@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     world_bank_api_key: str = ""
     gdelt_api_key: str = ""
     geocoding_api_key: str = ""
+    # Free token at https://metaculus.com/aib — required for Metaculus ingestion
+    metaculus_api_token: str = ""
 
     # Tier weights (must sum to 1.0)
     tier_weight_economic: float = 0.20

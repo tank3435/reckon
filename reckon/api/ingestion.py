@@ -8,6 +8,7 @@ from reckon.ingestion import (
     EconomicIngester,
     ExistentialIngester,
     IngestionResult,
+    MetaculusIngester,
     MilitaryIngester,
     PoliticalIngester,
     PolymarketIngester,
@@ -21,6 +22,7 @@ _INGESTERS = {
     "military": MilitaryIngester,
     "existential": ExistentialIngester,
     "polymarket": PolymarketIngester,
+    "metaculus": MetaculusIngester,
 }
 
 
