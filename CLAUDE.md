@@ -87,3 +87,36 @@ reckon/
 ### Adding a new data source / tier
 
 Subclass `BaseIngester`, set `tier`, implement `fetch() -> list[RawIndicator]`. Register the class in `api/ingestion.py`'s `_INGESTERS` dict.
+
+## Data Sources
+
+| Source | Status | What it provides | Credentials |
+|--------|--------|-----------------|-------------|
+| FRED | Live | Yield curve, unemployment, CPI, real GDP | None required |
+| Polymarket | Live | Prediction market probabilities for nuclear war, recession, conflict | None required |
+| Metaculus | Live | Community forecasts for existential/conflict/economic risk | Free token at metaculus.com/aib |
+| ACLED | Live | Conflict event counts, fatalities, regional breakdowns (90-day window) | Free registration at acleddata.com |
+| News Sentiment | Live | Per-tier sentiment scores (economic, political, military, existential) from 19 globally diverse RSS sources, credibility-weighted | Anthropic API key |
+
+### News sentiment architecture
+`NewsSentimentIngester` (in `ingestion/news_sentiment.py`) is **not** a `BaseIngester` subclass — it is synchronous (feedparser + Anthropic SDK) and returns `NewsSentimentIndicator` objects. The ingest endpoint in `api/ingestion.py` runs it via `run_in_executor` and handles the DB upsert directly. Do not add it to `_INGESTERS`.
+
+**Intentional constraints — do not change:**
+- News sentiment indicator weights are capped at **0.08** (`test_sentiment_indicators_low_weight` enforces this). News has structural upward bias; hard data anchors the score.
+- `_hard_data_score()` cross-validation in `analysis/scoring.py` prevents sentiment from singlehandedly crossing a response threshold.
+- Missing indicators default to **50.0**, not 0.0 — no data ≠ everything is fine.
+- `SOURCE_REGISTRY` in `news_sentiment.py` is the single place to add news sources.
+
+## API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /ingest/all` | Run all tier ingesters |
+| `POST /ingest/{tier}` | Run one tier ingester (economic, political, military, existential, polymarket, metaculus, acled) |
+| `POST /ingest/news_sentiment` | Trigger news sentiment collection |
+| `POST /api/indicators` | Fetch FRED economic indicators |
+| `GET  /api/indicators` | List stored indicators |
+| `GET  /api/assessment` | Get scored risk assessment (scoring engine, all stored indicators) |
+| `POST /assessments/run` | Run z-score assessment against baselines (legacy scorer) |
+| `GET  /assessments/latest` | Get latest baseline assessment |
+| `GET  /locations/intel?q=` | Location survival intelligence |

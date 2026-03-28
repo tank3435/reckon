@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from reckon.api.assessment import router as assessment_router
 from reckon.api.assessments import router as assessments_router
 from reckon.api.indicators import router as indicators_router
 from reckon.api.ingestion import router as ingestion_router
@@ -34,6 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(assessment_router, prefix="/api")
 app.include_router(assessments_router)
 app.include_router(indicators_router, prefix="/api")
 app.include_router(ingestion_router)

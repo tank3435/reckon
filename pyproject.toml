@@ -19,6 +19,8 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "geopy>=2.4.0",
     "shapely>=2.0.0",
+    "feedparser>=6.0.0",
+    "anthropic>=0.25.0",
 ]
 
 [project.optional-dependencies]
